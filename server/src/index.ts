@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import dotenv from 'dotenv';
+import authRoutes from './routes/auth';
 
 dotenv.config();
 
@@ -18,7 +19,7 @@ const server = Fastify({
 
 // Configurar CORS
 server.register(cors, {
-  origin: true, // En producción, especificar dominios permitidos
+  origin: true,
 });
 
 // Ruta de health check
@@ -37,10 +38,13 @@ server.get('/', async (request, reply) => {
     version: '1.0.0',
     endpoints: {
       health: '/health',
-      api: '/api',
+      auth: '/api/auth',
     },
   };
 });
+
+// ✨ REGISTRAR RUTAS DE AUTENTICACIÓN
+server.register(authRoutes, { prefix: '/api/auth' });
 
 // Iniciar servidor
 const start = async () => {
@@ -53,6 +57,7 @@ const start = async () => {
     console.log('   ════════════════════════════════════════════════');
     console.log(`   🌐 URL: http://localhost:${port}`);
     console.log(`   📊 Health: http://localhost:${port}/health`);
+    console.log(`   🔐 Auth: http://localhost:${port}/api/auth`);
     console.log('   ════════════════════════════════════════════════\n');
   } catch (err) {
     server.log.error(err);
