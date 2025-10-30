@@ -24,7 +24,7 @@ export const crearEquipoSchema = z.object({
   subgrupoId: z.number().int().positive('Subgrupo inválido'),
   proveedorId: z.number().int().positive().optional(),
   numeroFactura: z.string().max(50).optional(),
-  fechaIngreso: z.string().datetime('Fecha de ingreso inválida'),
+  fechaIngreso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha debe estar en formato YYYY-MM-DD'),
   observaciones: z.string().max(1000).optional(),
 });
 
@@ -42,10 +42,16 @@ export const actualizarEquipoSchema = z.object({
   marca: z.string().max(100).optional(),
   modelo: z.string().max(100).optional(),
   numeroSerie: z.string().max(100).optional(),
+  precioUnitario: z
+    .number()
+    .positive('Precio debe ser mayor a cero')
+    .int('Precio debe ser un número entero (en centavos)')
+    .optional(),
   estadoId: z.number().int().positive().optional(),
   areaId: z.number().int().positive().optional(),
   proveedorId: z.number().int().positive().optional(),
   numeroFactura: z.string().max(50).optional(),
+  fechaIngreso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha debe estar en formato YYYY-MM-DD').optional(),
   observaciones: z.string().max(1000).optional(),
 });
 

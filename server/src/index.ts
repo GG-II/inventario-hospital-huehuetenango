@@ -6,6 +6,9 @@ import equiposRoutes from './routes/equipos';
 import trasladosRoutes from './routes/traslados';
 import bajasRoutes from './routes/bajas';
 import reportesRoutes from './routes/reportes';
+import dashboardRoutes from './routes/dashboard';
+import areasRoutes from './routes/areas';
+import usuarioRoutes from './routes/usuario';
 
 dotenv.config();
 
@@ -21,8 +24,7 @@ const server = Fastify({
   },
 });
 
-server.register(cors, { origin: true });
-
+// Rutas básicas
 server.get('/health', async () => ({
   status: 'ok',
   timestamp: new Date().toISOString(),
@@ -39,14 +41,27 @@ server.get('/', async () => ({
   },
 }));
 
-server.register(authRoutes, { prefix: '/api/auth' });
-server.register(equiposRoutes, { prefix: '/api/equipos' });
-server.register(trasladosRoutes, { prefix: '/api/traslados' });
-server.register(bajasRoutes, { prefix: '/api/bajas' });
-server.register(reportesRoutes, { prefix: '/api/reportes' });
-
 const start = async () => {
   try {
+    // Configurar CORS DENTRO de la función start
+    await server.register(cors, {
+      origin: 'http://localhost:5173',
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+    });
+
+    // Registrar rutas
+    server.register(authRoutes, { prefix: '/api/auth' });
+    server.register(equiposRoutes, { prefix: '/api/equipos' });
+    server.register(trasladosRoutes, { prefix: '/api/traslados' });
+    server.register(bajasRoutes, { prefix: '/api/bajas' });
+    server.register(reportesRoutes, { prefix: '/api/reportes' });
+    server.register(dashboardRoutes, { prefix: '/api/dashboard' });
+    server.register(areasRoutes, { prefix: '/api/areas' });
+    server.register(usuarioRoutes, { prefix: '/api/usuario' });
+
+    // Iniciar servidor
     const port = parseInt(process.env.PORT || '3000');
     await server.listen({ port, host: '0.0.0.0' });
     
