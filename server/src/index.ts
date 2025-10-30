@@ -5,6 +5,7 @@ import authRoutes from './routes/auth';
 import equiposRoutes from './routes/equipos';
 import trasladosRoutes from './routes/traslados';
 import bajasRoutes from './routes/bajas';
+import reportesRoutes from './routes/reportes';
 
 dotenv.config();
 
@@ -42,6 +43,7 @@ server.register(authRoutes, { prefix: '/api/auth' });
 server.register(equiposRoutes, { prefix: '/api/equipos' });
 server.register(trasladosRoutes, { prefix: '/api/traslados' });
 server.register(bajasRoutes, { prefix: '/api/bajas' });
+server.register(reportesRoutes, { prefix: '/api/reportes' });
 
 const start = async () => {
   try {
@@ -57,6 +59,7 @@ const start = async () => {
     console.log(`   📦 Equipos: http://localhost:${port}/api/equipos`);
     console.log(`   📦 Traslados: http://localhost:${port}/api/traslados`);
     console.log(`   🗑️  Bajas: http://localhost:${port}/api/bajas`);
+    console.log(`   📄 Reportes: http://localhost:${port}/api/reportes`);
     console.log('   ════════════════════════════════════════════════\n');
   } catch (err) {
     server.log.error(err);
