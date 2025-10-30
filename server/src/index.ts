@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
+import equiposRoutes from './routes/equipos'; // ✨ NUEVO
 
 dotenv.config();
 
@@ -17,47 +18,39 @@ const server = Fastify({
   },
 });
 
-// Configurar CORS
-server.register(cors, {
-  origin: true,
-});
+server.register(cors, { origin: true });
 
-// Ruta de health check
-server.get('/health', async (request, reply) => {
-  return {
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  };
-});
+server.get('/health', async () => ({
+  status: 'ok',
+  timestamp: new Date().toISOString(),
+  uptime: process.uptime(),
+}));
 
-// Ruta raíz
-server.get('/', async (request, reply) => {
-  return {
-    message: 'API Sistema de Control de Inventario - Hospital Regional Huehuetenango',
-    version: '1.0.0',
-    endpoints: {
-      health: '/health',
-      auth: '/api/auth',
-    },
-  };
-});
+server.get('/', async () => ({
+  message: 'API Sistema de Control de Inventario',
+  version: '1.0.0',
+  endpoints: {
+    health: '/health',
+    auth: '/api/auth',
+    equipos: '/api/equipos', // ✨ NUEVO
+  },
+}));
 
-// ✨ REGISTRAR RUTAS DE AUTENTICACIÓN
 server.register(authRoutes, { prefix: '/api/auth' });
+server.register(equiposRoutes, { prefix: '/api/equipos' }); // ✨ NUEVO
 
-// Iniciar servidor
 const start = async () => {
   try {
     const port = parseInt(process.env.PORT || '3000');
     await server.listen({ port, host: '0.0.0.0' });
     
     console.log('\n🚀 ════════════════════════════════════════════════');
-    console.log('   SERVIDOR INICIADO EXITOSAMENTE');
+    console.log('   SERVIDOR INICIADO');
     console.log('   ════════════════════════════════════════════════');
     console.log(`   🌐 URL: http://localhost:${port}`);
     console.log(`   📊 Health: http://localhost:${port}/health`);
     console.log(`   🔐 Auth: http://localhost:${port}/api/auth`);
+    console.log(`   📦 Equipos: http://localhost:${port}/api/equipos`); // ✨ NUEVO
     console.log('   ════════════════════════════════════════════════\n');
   } catch (err) {
     server.log.error(err);
