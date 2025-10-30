@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { equipoService } from '../services/equipoService';
 import { requireAuth, requireRole } from '../middleware/auth';
+import { trasladoService } from '../services/trasladoService';
 import {
   crearEquipoSchema,
   actualizarEquipoSchema,
@@ -199,6 +200,47 @@ const equiposRoutes: FastifyPluginAsync = async (fastify) => {
       }
     }
   );
-};
 
+  /**
+   * GET /api/equipos/:id/historial
+   * Obtener historial completo de un equipo
+   */
+  fastify.get<{ Params: { id: string } }>(
+    '/:id/historial',
+    {
+      preHandler: [requireAuth],
+    },
+    async (request, reply) => {
+      try {
+        const id = parseInt(request.params.id);
+
+        if (isNaN(id)) {
+          return reply.code(400).send({
+            success: false,
+            error: {
+              code: 'INVALID_ID',
+              message: 'ID inválido',
+            },
+          });
+        }
+
+        const historial = await trasladoService.obtenerHistorialEquipo(id);
+
+        return reply.code(200).send({
+          success: true,
+          data: historial,
+        });
+      } catch (error) {
+        return reply.code(500).send({
+          success: false,
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: 'Error al obtener historial',
+          },
+        });
+      }
+    }
+  );
+};  
+  
 export default equiposRoutes;

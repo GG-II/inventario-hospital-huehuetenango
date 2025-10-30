@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import equiposRoutes from './routes/equipos'; // ✨ NUEVO
+import trasladosRoutes from './routes/traslados';
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ server.get('/', async () => ({
 
 server.register(authRoutes, { prefix: '/api/auth' });
 server.register(equiposRoutes, { prefix: '/api/equipos' }); // ✨ NUEVO
+server.register(trasladosRoutes, { prefix: '/api/traslados' });
 
 const start = async () => {
   try {
@@ -51,6 +53,7 @@ const start = async () => {
     console.log(`   📊 Health: http://localhost:${port}/health`);
     console.log(`   🔐 Auth: http://localhost:${port}/api/auth`);
     console.log(`   📦 Equipos: http://localhost:${port}/api/equipos`); // ✨ NUEVO
+    console.log(`   📦 Traslados: http://localhost:${port}/api/traslados`);
     console.log('   ════════════════════════════════════════════════\n');
   } catch (err) {
     server.log.error(err);
