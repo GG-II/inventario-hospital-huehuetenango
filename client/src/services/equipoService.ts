@@ -54,4 +54,12 @@ export const equipoService = {
     const response = await api.get(`/equipos/${id}/historial`);
     return response.data.data;
   },
+
+  async cambiarEstado(id: number, estadoId: number, observaciones?: string): Promise<Equipo> {
+    const response = await api.put<ApiResponse<Equipo>>(
+      `/equipos/${id}/cambiar-estado`,
+      { estadoId, observaciones }
+    );
+    return response.data.data;
+  },
 };

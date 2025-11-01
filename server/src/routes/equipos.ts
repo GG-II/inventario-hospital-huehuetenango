@@ -319,6 +319,128 @@ fastify.get<{
     }
   }
 );
+
+/**
+ * PUT /api/equipos/:id/cambiar-estado
+ * Cambiar estado de un equipo rápidamente
+ */
+fastify.put<{
+  Params: { id: string };
+  Body: { estadoId: number; observaciones?: string };
+}>(
+  '/:id/cambiar-estado',
+  {
+    preHandler: [requireAuth, requireRole(['Admin', 'Inventarios', 'Mantenimiento'])],
+  },
+  async (request, reply) => {
+    try {
+      const id = parseInt(request.params.id);
+      const { estadoId, observaciones } = request.body;
+
+      if (isNaN(id)) {
+        return reply.code(400).send({
+          success: false,
+          error: {
+            code: 'INVALID_ID',
+            message: 'ID inválido',
+          },
+        });
+      }
+
+      if (!estadoId) {
+        return reply.code(400).send({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'El estado es requerido',
+          },
+        });
+      }
+
+      console.log(`🔄 Cambiando estado del equipo ${id} a ${estadoId}`);
+
+      // Verificar que el equipo existe
+      const equipoActual = await equipoService.obtenerPorId(id);
+      if (!equipoActual) {
+        return reply.code(404).send({
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Equipo no encontrado',
+          },
+        });
+      }
+
+      // Verificar que el estado existe
+      const [estadoNuevo] = await db
+        .select()
+        .from(estados)
+        .where(eq(estados.id, estadoId))
+        .limit(1);
+
+      if (!estadoNuevo) {
+        return reply.code(404).send({
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Estado no encontrado',
+          },
+        });
+      }
+
+      // No permitir cambiar a "De baja (pendiente)" o "Dado de baja"
+      // Estos estados solo se cambian mediante el proceso de bajas
+      if (estadoNuevo.nombre === 'De baja (pendiente)' || estadoNuevo.nombre === 'Dado de baja') {
+        return reply.code(400).send({
+          success: false,
+          error: {
+            code: 'INVALID_STATE',
+            message: 'No se puede cambiar a este estado directamente. Use el proceso de bajas.',
+          },
+        });
+      }
+
+      // Actualizar estado
+      const equipoActualizado = await equipoService.actualizar(
+        id,
+        {
+          estadoId,
+          observaciones: observaciones || `Cambio de estado a: ${estadoNuevo.nombre}`,
+        },
+        request.user!.userId,
+        request.ip
+      );
+
+      console.log('✅ Estado actualizado exitosamente');
+
+      return reply.code(200).send({
+        success: true,
+        data: equipoActualizado,
+        message: `Estado cambiado a: ${estadoNuevo.nombre}`,
+      });
+    } catch (error) {
+      console.error('❌ Error al cambiar estado:', error);
+
+      if (error instanceof Error) {
+        return reply.code(400).send({
+          success: false,
+          error: {
+            code: 'UPDATE_ERROR',
+            message: error.message,
+          },
+        });
+      }
+
+      return reply.code(500).send({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Error al cambiar estado del equipo',
+        },
+      });
+    }
+  }
+);
 };  
   
 export default equiposRoutes;

@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { equipoService } from '@/services/equipoService';
-import { Equipo } from '@/types/equipo';
+import { Equipo, Estado } from '@/types/equipo';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
+import CambiarEstadoModal from '@/components/CambiarEstadoModal';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -15,16 +17,21 @@ export default function EquipoDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [equipo, setEquipo] = useState<Equipo | null>(null);
   const [historial, setHistorial] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [loadingHistorial, setLoadingHistorial] = useState(false);
+  const [showEstadoModal, setShowEstadoModal] = useState(false);
+  const [changingEstado, setChangingEstado] = useState(false);
+  const [estados, setEstados] = useState<Estado[]>([]);
 
   const canEdit = user?.rol === 'Admin' || user?.rol === 'Inventarios';
 
   useEffect(() => {
     if (id) {
       cargarEquipo();
+      cargarEstados();
     }
   }, [id]);
 
@@ -37,9 +44,26 @@ export default function EquipoDetail() {
       setEquipo(data);
     } catch (error) {
       console.error('Error al cargar equipo:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo cargar el equipo',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  const cargarEstados = () => {
+    // Estados disponibles del sistema
+    setEstados([
+      { id: 1, nombre: 'Activo', color: 'green' },
+      { id: 2, nombre: 'En reparación', color: 'yellow' },
+      { id: 3, nombre: 'Inactivo', color: 'gray' },
+      { id: 4, nombre: 'En préstamo', color: 'blue' },
+      { id: 5, nombre: 'De baja (pendiente)', color: 'orange' },
+      { id: 6, nombre: 'Dado de baja', color: 'red' },
+    ]);
   };
 
   const cargarHistorial = async () => {
@@ -53,6 +77,33 @@ export default function EquipoDetail() {
       console.error('Error al cargar historial:', error);
     } finally {
       setLoadingHistorial(false);
+    }
+  };
+
+  const handleCambiarEstado = async (estadoId: number, observaciones: string) => {
+    if (!id) return;
+
+    setChangingEstado(true);
+    try {
+      await equipoService.cambiarEstado(parseInt(id), estadoId, observaciones);
+      
+      toast({
+        title: '✅ Estado actualizado',
+        description: 'El estado del equipo ha sido cambiado exitosamente',
+      });
+      
+      setShowEstadoModal(false);
+      await cargarEquipo(); // Recargar datos del equipo
+    } catch (error: any) {
+      console.error('Error al cambiar estado:', error);
+      
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error?.message || 'No se pudo cambiar el estado del equipo',
+        variant: 'destructive',
+      });
+    } finally {
+      setChangingEstado(false);
     }
   };
 
@@ -133,10 +184,13 @@ export default function EquipoDetail() {
             Volver
           </Button>
           {canEdit && (
-            <Button asChild>
-              <Link to={`/equipos/${equipo.id}/editar`}>
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setShowEstadoModal(true)}
+              >
                 <svg
-                  className="w-5 h-5 mr-2"
+                  className="w-4 h-4 mr-2"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -145,12 +199,30 @@ export default function EquipoDetail() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
                   />
                 </svg>
-                Editar
-              </Link>
-            </Button>
+                Cambiar Estado
+              </Button>
+              <Button asChild>
+                <Link to={`/equipos/${equipo.id}/editar`}>
+                  <svg
+                    className="w-5 h-5 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                  Editar
+                </Link>
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -299,17 +371,12 @@ export default function EquipoDetail() {
                   <p className="text-sm text-gray-600">Creado por</p>
                   <p className="font-medium">{(equipo as any).creadoPor?.nombre || '-'}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Fecha de registro</p>
-                  <p className="font-medium">
-                    {equipo.createdAt && equipo.createdAt !== 'CURRENT_TIMESTAMP' && (
-                        <div>
-                            <p className="text-sm text-gray-600">Fecha de registro</p>
-                            <p className="font-medium">{formatDate(equipo.createdAt)}</p>
-                        </div>
-                        )}
-                  </p>
-                </div>
+                {equipo.createdAt && equipo.createdAt !== 'CURRENT_TIMESTAMP' && (
+                  <div>
+                    <p className="text-sm text-gray-600">Fecha de registro</p>
+                    <p className="font-medium">{formatDate(equipo.createdAt)}</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -366,6 +433,16 @@ export default function EquipoDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Modal de Cambio de Estado */}
+      <CambiarEstadoModal
+        open={showEstadoModal}
+        onClose={() => setShowEstadoModal(false)}
+        onConfirm={handleCambiarEstado}
+        loading={changingEstado}
+        estados={estados}
+        estadoActualId={equipo.estado?.id || 1}
+      />
     </div>
   );
 }
