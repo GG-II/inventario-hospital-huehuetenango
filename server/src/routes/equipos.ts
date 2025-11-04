@@ -5,6 +5,10 @@ import { trasladoService } from '../services/trasladoService';
 import { eq, desc, and, or, sql } from 'drizzle-orm';
 import { db } from '../config/database';
 import { equipos, areas, estados } from '../db/schema';
+import path from 'path';
+import multer from 'multer';
+import { auditService } from '../services/auditService';
+import { fotoService } from '../services/fotoService';
 import {
   crearEquipoSchema,
   actualizarEquipoSchema,
@@ -13,6 +17,22 @@ import {
   type ActualizarEquipoDto,
   type BuscarEquiposDto,
 } from '../types/equipo';
+
+// Configurar multer para memoria (no guardar en disco directamente)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    // Solo aceptar imágenes
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten archivos de imagen'));
+    }
+  },
+});
 
 const equiposRoutes: FastifyPluginAsync = async (fastify) => {
   /**
@@ -437,6 +457,151 @@ fastify.put<{
           code: 'INTERNAL_ERROR',
           message: 'Error al cambiar estado del equipo',
         },
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/equipos/:id/foto
+ * Subir foto de un equipo
+ */
+fastify.post<{ Params: { id: string } }>(
+  '/:id/foto',
+  {
+    preHandler: [requireAuth, requireRole(['Admin', 'Inventarios'])],
+  },
+  async (request, reply) => {
+    try {
+      const equipoId = parseInt(request.params.id);
+
+      if (isNaN(equipoId)) {
+        return reply.code(400).send({
+          success: false,
+          error: { code: 'INVALID_ID', message: 'ID inválido' },
+        });
+      }
+
+      // Verificar que el equipo existe
+      const equipo = await equipoService.obtenerPorId(equipoId);
+      if (!equipo) {
+        return reply.code(404).send({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Equipo no encontrado' },
+        });
+      }
+
+      // Obtener archivo del multipart
+      const data = await request.file();
+      
+      if (!data) {
+        return reply.code(400).send({
+          success: false,
+          error: { code: 'NO_FILE', message: 'No se recibió ningún archivo' },
+        });
+      }
+
+      // Validar tipo de archivo
+      if (!data.mimetype.startsWith('image/')) {
+        return reply.code(400).send({
+          success: false,
+          error: { code: 'INVALID_FILE', message: 'Solo se permiten imágenes' },
+        });
+      }
+
+      // Leer el buffer del archivo
+      const buffer = await data.toBuffer();
+
+      // Validar tamaño (5MB)
+      if (buffer.length > 5 * 1024 * 1024) {
+        return reply.code(400).send({
+          success: false,
+          error: { code: 'FILE_TOO_LARGE', message: 'El archivo es muy grande (máx 5MB)' },
+        });
+      }
+
+      // Eliminar foto anterior si existe
+      if (equipo.fotoUrl) {
+        await fotoService.eliminarFoto(equipo.fotoUrl);
+      }
+
+      // Procesar y guardar nueva foto
+      const fotoUrl = await fotoService.procesarFoto(buffer, equipoId);
+
+      // Actualizar equipo en BD
+      await db
+        .update(equipos)
+        .set({
+          fotoUrl,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(equipos.id, equipoId));
+
+      // Registrar en auditoría
+      await auditService.registrar({
+        usuarioId: request.user!.userId,
+        accion: 'SUBIR_FOTO',
+        tabla: 'equipos',
+        registroId: equipoId,
+        datosDespues: { fotoUrl },
+        ip: request.ip,
+      });
+
+      return reply.code(200).send({
+        success: true,
+        data: { fotoUrl },
+        message: 'Foto subida exitosamente',
+      });
+    } catch (error) {
+      console.error('Error al subir foto:', error);
+      return reply.code(500).send({
+        success: false,
+        error: { code: 'UPLOAD_ERROR', message: 'Error al subir foto' },
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/equipos/:id/foto
+ * Obtener foto de un equipo
+ */
+fastify.get<{ Params: { id: string } }>(
+  '/:id/foto',
+  async (request, reply) => {
+    try {
+      const equipoId = parseInt(request.params.id);
+
+      if (isNaN(equipoId)) {
+        return reply.code(400).send({
+          success: false,
+          error: { code: 'INVALID_ID', message: 'ID inválido' },
+        });
+      }
+
+      // Obtener equipo
+      const equipo = await equipoService.obtenerPorId(equipoId);
+      
+      if (!equipo || !equipo.fotoUrl) {
+        return reply.code(404).send({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Foto no encontrada' },
+        });
+      }
+
+      // Obtener nombre del archivo
+      const filename = path.basename(equipo.fotoUrl);
+      
+      // Leer archivo
+      const foto = await fotoService.obtenerFoto(filename);
+
+      return reply
+        .header('Content-Type', 'image/jpeg')
+        .send(foto);
+    } catch (error) {
+      return reply.code(404).send({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Foto no encontrada' },
       });
     }
   }

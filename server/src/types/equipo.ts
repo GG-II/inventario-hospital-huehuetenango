@@ -85,6 +85,7 @@ export interface EquipoCompleto {
   numeroFactura: string | null;
   fechaIngreso: string;
   observaciones: string | null;
+  fotoUrl: string | null;
   estado: {
     id: number;
     nombre: string;

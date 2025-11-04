@@ -17,6 +17,7 @@ export const equipos = sqliteTable('equipos', {
   numeroFactura: text('numero_factura'),
   fechaIngreso: text('fecha_ingreso').notNull(), // ISO string
   observaciones: text('observaciones'),
+  fotoUrl: text('foto_url'),
   creadoPor: integer('creado_por').notNull().references(() => usuarios.id),
   createdAt: text('created_at').notNull().default('CURRENT_TIMESTAMP'),
   updatedAt: text('updated_at').default('CURRENT_TIMESTAMP'),

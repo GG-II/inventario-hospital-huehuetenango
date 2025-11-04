@@ -11,6 +11,7 @@ import bajasRoutes from './routes/bajas';
 import reportesRoutes from './routes/reportes';
 import dashboardRoutes from './routes/dashboard';
 import areasRoutes from './routes/areas';
+import multipart from '@fastify/multipart';
 import usuarioRoutes from './routes/usuario';
 import { iniciarBackupsAutomaticos } from './config/backup-scheduler';
 
@@ -56,6 +57,8 @@ const start = async () => {
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
     });
+
+    await server.register(multipart);
 
     // Registrar rutas API
     server.register(authRoutes, { prefix: '/api/auth' });

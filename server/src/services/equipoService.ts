@@ -76,6 +76,7 @@ export class EquipoService {
         modelo: equipos.modelo,
         numeroSerie: equipos.numeroSerie,
         precioUnitario: equipos.precioUnitario,
+        fotoUrl: equipos.fotoUrl,
         fechaIngreso: equipos.fechaIngreso,
         estado: {
           id: estados.id,
@@ -168,6 +169,7 @@ export class EquipoService {
         numeroFactura: equipos.numeroFactura,
         fechaIngreso: equipos.fechaIngreso,
         observaciones: equipos.observaciones,
+        fotoUrl: equipos.fotoUrl,
         estado: {
           id: estados.id,
           nombre: estados.nombre,
